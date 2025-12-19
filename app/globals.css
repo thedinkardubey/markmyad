@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --color-border: oklch(0.918 0 0);
+  --color-input: oklch(0.918 0 0);
+  --color-ring: oklch(0.592 0.206 255.5);
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.161 0.042 255.5);
+  
+  --color-primary: oklch(0.592 0.206 255.5);
+  --color-primary-foreground: oklch(0.987 0.008 255.5);
+  
+  --color-secondary: oklch(0.968 0.004 255.5);
+  --color-secondary-foreground: oklch(0.228 0.034 255.5);
+  
+  --color-destructive: oklch(0.647 0.203 27.325);
+  --color-destructive-foreground: oklch(0.987 0.008 255.5);
+  
+  --color-muted: oklch(0.968 0.004 255.5);
+  --color-muted-foreground: oklch(0.569 0.025 255.5);
+  
+  --color-accent: oklch(0.968 0.004 255.5);
+  --color-accent-foreground: oklch(0.228 0.034 255.5);
+  
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.161 0.042 255.5);
+  
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.161 0.042 255.5);
+  
+  --radius-lg: 0.5rem;
+  --radius-md: calc(0.5rem - 2px);
+  --radius-sm: calc(0.5rem - 4px);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
