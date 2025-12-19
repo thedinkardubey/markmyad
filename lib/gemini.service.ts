@@ -23,7 +23,8 @@ export class GeminiService {
   private model;
 
   constructor() {
-    this.model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    // ✅ FIXED: Using correct model name 'gemini-2.5-flash' instead of deprecated 'gemini-pro'
+    this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
   // Detect if command contains multiple instructions
