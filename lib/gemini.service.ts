@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { prisma } from './prisma';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -25,6 +26,24 @@ export class GeminiService {
   constructor() {
     // ✅ FIXED: Using correct model name 'gemini-2.5-flash' instead of deprecated 'gemini-pro'
     this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  }
+
+  // 🆕 Fetch existing roles and permissions for context
+  private async getContextData() {
+    try {
+      const [roles, permissions] = await Promise.all([
+        prisma.role.findMany({ select: { name: true } }),
+        prisma.permission.findMany({ select: { name: true, description: true } })
+      ]);
+      
+      return {
+        roleNames: roles.map(r => r.name),
+        permissions: permissions.map(p => ({ name: p.name, description: p.description || '' }))
+      };
+    } catch (error) {
+      console.error('Error fetching context data:', error);
+      return { roleNames: [], permissions: [] };
+    }
   }
 
   // Detect if command contains multiple instructions
@@ -88,11 +107,24 @@ Now analyze the command above.
   }
 
   async parseCommand(command: string): Promise<CommandIntent> {
+    // 🆕 Get existing context
+    const context = await this.getContextData();
+    
     const prompt = `
 You are an AI assistant specialized in parsing Role-Based Access Control (RBAC) commands.
 Parse the following natural language command and extract the intent and entities.
 
 Command: "${command}"
+
+IMPORTANT - Available Context (existing roles and permissions in the system):
+Roles: ${context.roleNames.length > 0 ? context.roleNames.join(', ') : 'None yet'}
+Permissions: ${context.permissions.length > 0 ? context.permissions.map(p => `${p.name}${p.description ? ` (${p.description})` : ''}`).join(', ') : 'None yet'}
+
+🔑 KEY INSTRUCTION: Use contextual understanding to match natural language to actual permission names.
+- If user says "view dashboard", match it to "can_view_dashboard" permission if it exists
+- If user says "edit posts", match it to "can_edit_posts" or "edit_posts" if it exists
+- If user says "content editor" role, match it to "content_editor" or "editor" if it exists
+- Be flexible with naming variations (underscores, spaces, prefixes like "can_")
 
 Respond ONLY with a valid JSON object in this exact format:
 {
@@ -110,19 +142,20 @@ Rules:
 - "action" must be one of the specified values
 - "confidence" should be between 0 and 1 - BE GENEROUS with confidence (0.8+) if the intent is clear
 - "suggestions" should contain alternative interpretations only if confidence < 0.7
-- Extract entity names without quotes or extra formatting
+- Extract entity names matching the ACTUAL names from the context above
 - For assign/give/add commands with role and permission, always use "assign_permission"
 - If the command mentions both a role name and permission name, confidence should be HIGH (0.9+)
+- Use contextual matching to find the closest actual role/permission name
 
 Examples:
 - "create a permission called edit_articles" → action: "create_permission", permissionName: "edit_articles", confidence: 0.95
 - "assign reader the permission can_read_articles" → action: "assign_permission", roleName: "reader", permissionName: "can_read_articles", confidence: 0.95
 - "give admin role the delete_users permission" → action: "assign_permission", roleName: "admin", permissionName: "delete_users", confidence: 0.95
+- "give permission to content editor to view dashboard" → If "content_editor" role and "can_view_dashboard" permission exist, action: "assign_permission", roleName: "content_editor", permissionName: "can_view_dashboard", confidence: 0.9
 - "make a new role called moderator" → action: "create_role", roleName: "moderator", confidence: 0.9
 - "list all roles" → action: "list_roles", confidence: 1.0
-- "assign editor edit_posts" → action: "assign_permission", roleName: "editor", permissionName: "edit_posts", confidence: 0.85
 
-Important: Commands with clear role and permission names should have HIGH confidence (0.85-0.95), even if grammar is informal.
+Important: Commands with clear role and permission intent should have HIGH confidence (0.85-0.95), even if the exact names don't match but can be inferred from context.
 
 Now parse the command above and respond with JSON only.
 `;
@@ -139,7 +172,7 @@ Now parse the command above and respond with JSON only.
       } else if (text.includes('```')) {
         jsonText = text.split('```')[1].split('```')[0].trim();
       }
-
+      
       const parsed: CommandIntent = JSON.parse(jsonText);
       
       // Boost confidence if we have clear entities for assign_permission
@@ -155,24 +188,32 @@ Now parse the command above and respond with JSON only.
       console.error('Error parsing command with Gemini:', error);
       
       // Fallback: Try simple pattern matching if Gemini fails
-      return this.fallbackParser(command);
+      return this.fallbackParser(command, context);
     }
   }
 
-  // Fallback parser using regex patterns
-  private fallbackParser(command: string): CommandIntent {
+  // Fallback parser using regex patterns with context awareness
+  private async fallbackParser(command: string, context?: { roleNames: string[], permissions: any[] }): Promise<CommandIntent> {
+    if (!context) {
+      context = await this.getContextData();
+    }
+    
     const lowerCommand = command.toLowerCase().trim();
     
     // Pattern: assign/give [role] [permission]
     const assignMatch = lowerCommand.match(/(?:assign|give|add)\s+(\w+)\s+(?:the\s+)?permission\s+['""]?(\w+)['""]?/i) ||
-                       lowerCommand.match(/(?:assign|give|add)\s+(?:the\s+)?(?:role\s+)?['""]?(\w+)['""]?\s+(?:the\s+)?permission\s+(?:to\s+)?['""]?(\w+)['""]?/i);
+                       lowerCommand.match(/(?:assign|give|add)\s+(?:the\s+)?(?:role\s+)?['""]?(\w+)['""]?\s+(?:the\s+)?permission\s+(?:to\s+)?['""]?(\w+)['""]?/i) ||
+                       lowerCommand.match(/(?:give|grant)\s+permission\s+to\s+(.+?)\s+to\s+(.+)/i);
     
     if (assignMatch) {
+      const roleName = assignMatch[1].trim().replace(/['"]/g, '');
+      const permissionName = assignMatch[2].trim().replace(/['"]/g, '');
+      
       return {
         action: 'assign_permission',
         entities: {
-          roleName: assignMatch[1].trim(),
-          permissionName: assignMatch[2].trim(),
+          roleName: this.findClosestMatch(roleName, context.roleNames) || roleName,
+          permissionName: this.findClosestMatch(permissionName, context.permissions.map(p => p.name)) || permissionName,
         },
         confidence: 0.85,
       };
@@ -208,6 +249,34 @@ Now parse the command above and respond with JSON only.
       confidence: 0,
       suggestions: ['Please rephrase your command more clearly']
     };
+  }
+
+  // 🆕 Helper to find closest matching name from existing data
+  private findClosestMatch(input: string, options: string[]): string | null {
+    if (!options || options.length === 0) return null;
+    
+    const normalized = input.toLowerCase().replace(/[-\s]/g, '_');
+    
+    // Exact match
+    const exactMatch = options.find(opt => opt.toLowerCase() === normalized);
+    if (exactMatch) return exactMatch;
+    
+    // Partial match (contains)
+    const partialMatch = options.find(opt => 
+      opt.toLowerCase().includes(normalized) || 
+      normalized.includes(opt.toLowerCase())
+    );
+    if (partialMatch) return partialMatch;
+    
+    // Match with common prefixes
+    const withPrefix = options.find(opt => 
+      opt.toLowerCase() === `can_${normalized}` ||
+      opt.toLowerCase() === `${normalized}_permission` ||
+      normalized === `can_${opt.toLowerCase()}`
+    );
+    if (withPrefix) return withPrefix;
+    
+    return null;
   }
 
   async suggestCorrections(command: string, error: string): Promise<string[]> {
