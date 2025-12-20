@@ -232,7 +232,7 @@ Now parse the command above and respond with JSON only.
     }
     
     // Pattern: create/make role (improved)
-    const roleMatch = lowerCommand.match(/(?:create|make)\s+(?:a\s+)?(?:new\s+)?role\s+(?:called\s+)?['""]?(\w+)['""]?/i);
+        const roleMatch = lowerCommand.match(/(?:create|make)\s+(?:a\s+)?(?:new\s+)?role\s+(?:called\s+)?['""]?([\w\s]+)['""]?/i);
     if (roleMatch) {
       return {
         action: 'create_role',
