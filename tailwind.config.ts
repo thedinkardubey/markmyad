@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class",
+  darkMode: ["class"],
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -16,8 +16,10 @@ const config: Config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
+          DEFAULT: "#0A65F0",
           foreground: "hsl(var(--primary-foreground))",
+          dark: "#0748AC",
+          light: "#60A5FA",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -43,11 +45,24 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+        },
+        "background-light": "#F8F9FA",
+        "background-dark": "#1A202C",
+        "surface-light": "#FFFFFF",
+        "surface-dark": "#2D3748",
+        "border-light": "#E0E0E0",
+        "border-dark": "#4A5568",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "0.75rem",
+        xl: "1rem",
+        "2xl": "1.25rem",
+      },
+      fontFamily: {
+        sans: ["Lato", "sans-serif"],
+        display: ["Lato", "sans-serif"],
       },
     },
   },

@@ -44,23 +44,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[#2e3440] p-4">
+      <Card className="w-full max-w-md bg-[#3b4252] border-[#4c566a]">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl font-bold text-[#eceff4]">Welcome Back</CardTitle>
+          <CardDescription className="text-[#d8dee9]/70">
             Sign in to your account to access the RBAC Configurator
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+              <div className="bg-red-900/20 text-red-300 text-sm p-3 rounded-md border border-red-700/50">
                 {error}
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-[#e5e9f0]">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -68,10 +68,11 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="bg-[#2e3440] border-[#4c566a] text-[#eceff4] placeholder:text-[#d8dee9]/40"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-[#e5e9f0]">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -79,6 +80,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="bg-[#2e3440] border-[#4c566a] text-[#eceff4] placeholder:text-[#d8dee9]/40"
               />
             </div>
           </CardContent>
@@ -86,7 +88,7 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-sm text-[#d8dee9]/70 text-center">
               Don't have an account?{' '}
               <Link href="/signup" className="text-primary hover:underline">
                 Sign up
